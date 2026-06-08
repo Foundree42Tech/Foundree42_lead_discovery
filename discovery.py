@@ -1,5 +1,5 @@
 import streamlit as st
-import groq
+import anthropic
 import requests
 import json
 import re
@@ -92,8 +92,8 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    gk = st.text_input("Groq API Key",   type="password", placeholder="sk-...")
-    if gk: st.session_state["api_key"]    = gk; st.success("Groq active")
+    gk = st.text_input("Anthropic API Key", type="password", placeholder="sk-ant-...")
+    if gk: st.session_state["api_key"] = gk; st.success("Anthropic active")
 
     ak = st.text_input("Apollo API Key", type="password", placeholder="apollo...")
     if ak: st.session_state["apollo_key"] = ak; st.success("Apollo active")
@@ -129,15 +129,16 @@ SCORING = (
 
 def ask_ai(prompt):
     if not st.session_state.get("api_key"):
-        return "ERROR: No Groq key"
+        return "ERROR: No Anthropic key"
     try:
-        client = groq.Groq(api_key=st.session_state["api_key"])
-        r = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role":"system","content":SYSTEM},{"role":"user","content":prompt}],
-            temperature=0.4, max_tokens=3000
+        client = anthropic.Anthropic(api_key=st.session_state["api_key"])
+        r = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=3000,
+            system=SYSTEM,
+            messages=[{"role": "user", "content": prompt}],
         )
-        return r.choices[0].message.content
+        return r.content[0].text
     except Exception as e:
         return "ERROR: " + str(e)
 
@@ -461,7 +462,7 @@ with c2:
 st.markdown("---")
 if st.button("Find Leads", type="primary"):
     if not st.session_state.get("api_key"):
-        st.error("Add your Groq API key in the sidebar.")
+        st.error("Add your Anthropic API key in the sidebar.")
     elif not s_industry or not s_location:
         st.error("Industry and Location are required.")
     else:
