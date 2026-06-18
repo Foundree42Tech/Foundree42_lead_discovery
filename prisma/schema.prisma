@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int       @id @default(autoincrement())
+  email             String    @unique
+  passwordHash      String
+  name              String?
+  createdAt         DateTime  @default(now())
+  emailVerified     Boolean   @default(false)
+  verifyToken       String?   @unique
+  verifyTokenExpiry DateTime?
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+  sfAccessToken     String?
+  sfRefreshToken    String?
+  sfInstanceUrl     String?
+  sfTokenExpiry     DateTime?
+  avatarUrl         String?
+  timezone          String?   @default("America/New_York")
+  theme             String?   @default("light")
+  notifPrefs        Json?
+  role              String    @default("owner")
+  weeklyGoal        Int?      @default(20)
+}
+
+model Config {
+  key   String @id
+  value String
+}
+
+model Lead {
+  id           Int      @id @default(autoincrement())
+  company      String
+  industry     String?
+  employees    String?
+  revenue      String?
+  location     String?
+  score        Int?
+  icp          String?
+  whyFit       String?
+  trigger      String?
+  source       String?
+  verified     Boolean  @default(false)
+  contacts     Json?
+  technologies Json?
+  newsSignals  Json?
+  targetRoles  Json?
+  foundAt      DateTime @default(now())
+  userId       Int?
+  status          String   @default("new")
+  notes           String?
+  sfLeadId        String?
+  currentCRM      String?
+  painPoints      Json?
+  pitchStrategy   Json?
+  linkedinDm      String?
+  coldEmail       String?
+  emailSubject    String?
+  followupEmail   String?
+  connectionNote  String?
+  outreachScore   Int?
+  dealValue       Int?
+  followUpAt      DateTime?
+  activities      LeadActivity[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([score])
+}
+
+model LeadActivity {
+  id          Int      @id @default(autoincrement())
+  leadId      Int
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        String
+  description String
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([createdAt])
+}
+
+model Search {
+  id        Int      @id @default(autoincrement())
+  params    Json
+  leadCount Int
+  ranAt     DateTime @default(now())
+  userId    Int?
+}

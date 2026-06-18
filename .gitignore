@@ -1,14 +1,23 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-env/
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Prisma generated
+prisma/migrations/
 
 # Secrets
 .env
-.streamlit/secrets.toml
+.env.local
+.env*.local
+
+# Python (legacy)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
 
 # OS
 .DS_Store

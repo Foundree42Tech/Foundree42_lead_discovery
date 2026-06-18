@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens. Apple `black`/`gray`/`silver` resolve to these (see tailwind.config.ts),
+   so most surfaces and text adapt to dark mode automatically. Accent colors
+   (blue/green/amber/red) and true `white` text stay constant. */
+:root {
+  --c-black:  0 24 37;       /* #001825 brand navy — primary text */
+  --c-gray:   95 99 96;      /* #5f6360 muted text */
+  --c-silver: 238 242 245;   /* #eef2f5 subtle cool surface */
+  --bg-app:   #f4f7f9;       /* page background — clean cool off-white */
+  --surface:  #ffffff;       /* card background (bg-white) */
+}
+
+.dark {
+  /* Navy-tinted dark theme, derived from the brand navy #001825 */
+  --c-black:  233 238 242;   /* light text */
+  --c-gray:   148 158 166;   /* muted text */
+  --c-silver: 13 38 51;      /* #0d2633 subtle surface */
+  --bg-app:   #00131d;       /* deep navy-black page background */
+  --surface:  #04212e;       /* navy card surface */
+}
+
+html, body {
+  background-color: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Card surfaces use the literal `bg-white` utility; remap it in dark mode.
+   `text-white` on accent buttons is intentionally left untouched. */
+.dark .bg-white { background-color: var(--surface); }
