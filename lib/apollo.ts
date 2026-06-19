@@ -54,15 +54,60 @@ export async function apolloCompanySearch(
   }
 }
 
-// Apollo matches on the canonical company name ("Notion"), so strip common legal
-// and descriptive suffixes the discovery sources often append ("Notion Labs",
-// "Flexton Inc.", "SolarMax Technologies") before searching for people.
+// Apollo matches on the canonical company name ("Notion"), so clean up the noisy
+// names the discovery sources produce before searching for people:
+//  - strip AI annotations in parentheses/brackets
+//    ("HealthSouth (Phoenix Operations - Encompass successor)" → "HealthSouth")
+//  - strip common legal/descriptive suffixes
+//    ("Notion Labs", "Flexton Inc.", "SolarMax Technologies")
 export function normalizeCompanyName(name: string): string {
-  return name
+  const cleaned = name
+    .replace(/\([^)]*\)/g, " ")   // (parenthetical annotations)
+    .replace(/\[[^\]]*\]/g, " ")  // [bracketed annotations]
     .replace(/[.,]/g, " ")
     .replace(/\b(inc|llc|ltd|corp|corporation|co|company|group|holdings|labs|technologies|technology|software|solutions|systems|global|international)\b/gi, " ")
     .replace(/\s+/g, " ")
-    .trim() || name.trim();
+    .trim();
+  return cleaned || name.trim();
+}
+
+interface ApolloPerson {
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  last_name_obfuscated?: string;
+  title?: string;
+  email?: string;
+  linkedin_url?: string;
+}
+
+// Broad leadership titles used as a fallback when the targeted decision-maker
+// titles match nobody — common for small or non-sales orgs (clinics, schools)
+// where the buyer is an Owner/Administrator/Practice Manager rather than a VP Sales.
+const BROAD_LEADERSHIP_TITLES = [
+  "Owner", "Founder", "CEO", "Chief Executive Officer", "President",
+  "Executive Director", "Administrator", "Practice Manager", "Office Manager",
+  "Managing Director", "General Manager", "COO", "Chief Operating Officer",
+  "Vice President", "Director",
+];
+
+// NOTE: the old `mixed_people/search` endpoint is deprecated for API callers
+// (returns HTTP 422). The current endpoint is `mixed_people/api_search`.
+async function fetchApolloPeople(orgName: string, titles: string[], apiKey: string): Promise<ApolloPerson[]> {
+  const res = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
+    body: JSON.stringify({
+      q_organization_name: orgName,
+      person_titles: titles,
+      page: 1,
+      per_page: 5,
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.people ?? []) as ApolloPerson[];
 }
 
 export async function apolloPeopleSearch(
@@ -71,30 +116,12 @@ export async function apolloPeopleSearch(
   apiKey: string
 ): Promise<ApolloContact[]> {
   try {
-    // NOTE: the old `mixed_people/search` endpoint is deprecated for API callers
-    // (returns HTTP 422). The current endpoint is `mixed_people/api_search`.
-    const res = await fetch("https://api.apollo.io/v1/mixed_people/api_search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
-      body: JSON.stringify({
-        q_organization_name: normalizeCompanyName(companyName),
-        person_titles: titles,
-        page: 1,
-        per_page: 5,
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    const people = (data.people ?? []) as {
-      name?: string;
-      first_name?: string;
-      last_name?: string;
-      last_name_obfuscated?: string;
-      title?: string;
-      email?: string;
-      linkedin_url?: string;
-    }[];
+    const org = normalizeCompanyName(companyName);
+    let people = await fetchApolloPeople(org, titles, apiKey);
+    // Fall back to a broad leadership search if the targeted titles matched no one.
+    if (people.length === 0) {
+      people = await fetchApolloPeople(org, BROAD_LEADERSHIP_TITLES, apiKey);
+    }
     return people
       .map((p) => {
         // Free/basic Apollo API plans redact full names, emails, and LinkedIn URLs
